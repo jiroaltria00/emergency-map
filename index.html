@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Emergency Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --red: #E53935;
+      --bg: #0A0A0F;
+      --surface: rgba(19,19,26,0.92);
+      --surface2: #1C1C27;
+      --text: #F0F0F5;
+      --text-muted: #8888AA;
+      --border: rgba(255,255,255,0.07);
+    }
+
+    html, body { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); overflow: hidden; }
+
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    /* status pill */
+    #status-bar {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 99px; padding: 8px 18px;
+      display: flex; align-items: center; gap: 8px;
+      z-index: 1000; backdrop-filter: blur(12px);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4); white-space: nowrap;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: blink 1.5s infinite; flex-shrink: 0; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    #status-text { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+
+    /* bottom card */
+    #info-card {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      border-radius: 20px 20px 0 0; padding: 14px 20px 28px;
+      z-index: 1000; backdrop-filter: blur(16px);
+    }
+    .handle { width: 36px; height: 4px; background: var(--border); border-radius: 99px; margin: 0 auto 14px; }
+    .card-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .coord-block { flex: 1; }
+    .coord-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+    .coord-value { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .divider { width: 1px; height: 36px; background: var(--border); align-self: center; }
+
+    /* SOS */
+    #sos-btn {
+      position: absolute; bottom: 130px; right: 20px;
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--red); border: none; color: white;
+      font-size: 11px; font-weight: 900; letter-spacing: 0.06em;
+      cursor: pointer; z-index: 1000;
+      animation: pulse-sos 2s infinite;
+      box-shadow: 0 0 0 0 rgba(229,57,53,0.4);
+    }
+    @keyframes pulse-sos {
+      0%{box-shadow:0 0 0 0 rgba(229,57,53,0.4);}
+      70%{box-shadow:0 0 0 18px rgba(229,57,53,0);}
+      100%{box-shadow:0 0 0 0 rgba(229,57,53,0);}
+    }
+
+    /* recenter */
+    #recenter-btn {
+      position: absolute; bottom: 133px; left: 20px;
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 20px; cursor: pointer;
+      z-index: 1000; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* loading */
+    #loading {
+      position: absolute; inset: 0; background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; z-index: 2000;
+    }
+    .ring { width: 48px; height: 48px; border: 3px solid #1C1C27; border-top-color: var(--red); border-radius: 50%; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+    /* error */
+    #error-screen {
+      position: absolute; inset: 0; background: var(--bg);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 32px; text-align: center; z-index: 2000;
+    }
+    .err-icon { font-size: 40px; }
+    .err-title { font-size: 16px; font-weight: 700; color: var(--red); }
+    .err-body { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+    .retry { margin-top: 8px; padding: 10px 24px; background: var(--red); border: none; border-radius: 99px; color: white; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    /* leaflet dark overrides */
+    .leaflet-tile { filter: brightness(0.85) invert(1) hue-rotate(180deg) saturate(0.7); }
+    .leaflet-container { background: var(--bg); }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="ring"></div>
+  <p class="loading-text">Getting your location…</p>
+</div>
+
+<div id="error-screen">
+  <div class="err-icon">📍</div>
+  <div class="err-title">Location Unavailable</div>
+  <div class="err-body">Allow location access so we can show your position on the map.</div>
+  <button class="retry" onclick="startTracking()">Try Again</button>
+</div>
+
+<div id="map"></div>
+
+<div id="status-bar">
+  <div class="status-dot"></div>
+  <span id="status-text">Locating you…</span>
+</div>
+
+<button id="recenter-btn" onclick="recenter()">⊕</button>
+<button id="sos-btn" onclick="triggerSOS()">SOS</button>
+
+<div id="info-card">
+  <div class="handle"></div>
+  <div class="card-row">
+    <div class="coord-block">
+      <div class="coord-label">Latitude</div>
+      <div class="coord-value" id="lat-val">—</div>
+    </div>
+    <div class="divider"></div>
+    <div class="coord-block">
+      <div class="coord-label">Longitude</div>
+      <div class="coord-value" id="lng-val">—</div>
+    </div>
+    <div class="divider"></div>
+    <div class="coord-block">
+      <div class="coord-label">Accuracy</div>
+      <div class="coord-value" id="acc-val">—</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  let map, userMarker, accuracyCircle, watchId;
+  let currentLat, currentLng;
+  let mapReady = false;
+
+  // init map centered on Tarlac
+  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([15.4755, 120.5960], 16);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+  }).addTo(map);
+
+  mapReady = true;
+  startTracking();
+
+  function startTracking() {
+    document.getElementById('error-screen').style.display = 'none';
+    document.getElementById('loading').style.display = 'flex';
+
+    if (!navigator.geolocation) { showError(); return; }
+
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, { enableHighAccuracy: true, timeout: 12000 });
+    watchId = navigator.geolocation.watchPosition(onSuccess, onError, { enableHighAccuracy: true, maximumAge: 4000 });
+  }
+
+  function onSuccess(pos) {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    const acc = pos.coords.accuracy;
+
+    currentLat = lat; currentLng = lng;
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('status-text').textContent = 'Live location active';
+    document.getElementById('lat-val').textContent = lat.toFixed(6);
+    document.getElementById('lng-val').textContent = lng.toFixed(6);
+    document.getElementById('acc-val').textContent = Math.round(acc) + 'm';
+
+    const latlng = [lat, lng];
+
+    const redIcon = L.divIcon({
+      html: `<div style="
+        width:18px;height:18px;border-radius:50%;
+        background:#E53935;border:3px solid white;
+        box-shadow:0 0 0 4px rgba(229,57,53,0.3);
+      "></div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+      className: ''
+    });
+
+    if (!userMarker) {
+      userMarker = L.marker(latlng, { icon: redIcon }).addTo(map);
+      accuracyCircle = L.circle(latlng, {
+        radius: acc,
+        color: '#E53935',
+        fillColor: '#E53935',
+        fillOpacity: 0.08,
+        weight: 1,
+        opacity: 0.3
+      }).addTo(map);
+      map.setView(latlng, 16);
+    } else {
+      userMarker.setLatLng(latlng);
+      accuracyCircle.setLatLng(latlng);
+      accuracyCircle.setRadius(acc);
+    }
+  }
+
+  function onError() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-screen').style.display = 'flex';
+    document.getElementById('status-text').textContent = 'Location unavailable';
+  }
+
+  function recenter() {
+    if (currentLat && currentLng) map.setView([currentLat, currentLng], 16);
+  }
+
+  function triggerSOS() {
+    if (currentLat && currentLng) {
+      // replace with actual station coords
+      const stationLat = 15.4833;
+      const stationLng = 120.5980;
+      window.open(`https://www.openstreetmap.org/directions?from=${currentLat},${currentLng}&to=${stationLat},${stationLng}`, '_blank');
+    } else {
+      alert('Still getting your location, please wait...');
+    }
+  }
+</script>
+</body>
+</html>
