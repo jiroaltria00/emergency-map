@@ -9,20 +9,22 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --red: #E53935;
       --bg: #0A0A0F;
       --surface: rgba(19,19,26,0.92);
       --surface2: #1C1C27;
       --text: #F0F0F5;
       --text-muted: #8888AA;
       --border: rgba(255,255,255,0.07);
+      --red: #E53935;
+      --blue: #1E88E5;
+      --orange: #FB8C00;
+      --green: #43A047;
     }
 
     html, body { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); overflow: hidden; }
 
     #map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-    /* status pill */
     #status-bar {
       position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
       background: var(--surface); border: 1px solid var(--border);
@@ -34,6 +36,17 @@
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: blink 1.5s infinite; flex-shrink: 0; }
     @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
     #status-text { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+
+    /* legend */
+    #legend {
+      position: absolute; top: 70px; right: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 10px 14px;
+      z-index: 1000; backdrop-filter: blur(12px);
+      display: flex; flex-direction: column; gap: 7px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; color: var(--text); }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; border: 2px solid white; }
 
     /* bottom card */
     #info-card {
@@ -49,25 +62,9 @@
     .coord-value { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
     .divider { width: 1px; height: 36px; background: var(--border); align-self: center; }
 
-    /* SOS */
-    #sos-btn {
-      position: absolute; bottom: 130px; right: 20px;
-      width: 64px; height: 64px; border-radius: 50%;
-      background: var(--red); border: none; color: white;
-      font-size: 11px; font-weight: 900; letter-spacing: 0.06em;
-      cursor: pointer; z-index: 1000;
-      animation: pulse-sos 2s infinite;
-      box-shadow: 0 0 0 0 rgba(229,57,53,0.4);
-    }
-    @keyframes pulse-sos {
-      0%{box-shadow:0 0 0 0 rgba(229,57,53,0.4);}
-      70%{box-shadow:0 0 0 18px rgba(229,57,53,0);}
-      100%{box-shadow:0 0 0 0 rgba(229,57,53,0);}
-    }
-
     /* recenter */
     #recenter-btn {
-      position: absolute; bottom: 133px; left: 20px;
+      position: absolute; bottom: 110px; left: 20px;
       width: 44px; height: 44px; border-radius: 12px;
       background: var(--surface2); border: 1px solid var(--border);
       color: var(--text); font-size: 20px; cursor: pointer;
@@ -95,7 +92,6 @@
     .err-body { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
     .retry { margin-top: 8px; padding: 10px 24px; background: var(--red); border: none; border-radius: 99px; color: white; font-size: 13px; font-weight: 700; cursor: pointer; }
 
-    /* leaflet dark overrides */
     .leaflet-tile { filter: brightness(0.85) invert(1) hue-rotate(180deg) saturate(0.7); }
     .leaflet-container { background: var(--bg); }
   </style>
@@ -121,8 +117,15 @@
   <span id="status-text">Locating you…</span>
 </div>
 
+<!-- Legend -->
+<div id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#E53935"></div> You</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1E88E5"></div> Police</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#43A047"></div> Hospital</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FB8C00"></div> Fire Station</div>
+</div>
+
 <button id="recenter-btn" onclick="recenter()">⊕</button>
-<button id="sos-btn" onclick="triggerSOS()">SOS</button>
 
 <div id="info-card">
   <div class="handle"></div>
@@ -148,16 +151,63 @@
 <script>
   let map, userMarker, accuracyCircle, watchId;
   let currentLat, currentLng;
-  let mapReady = false;
 
-  // init map centered on Tarlac
-  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([15.4755, 120.5960], 16);
+  // Emergency facilities around Tarlac City
+  const facilities = [
+    // Police Stations
+    { name: "Tarlac City Police Station", lat: 15.4872, lng: 120.5940, type: "police" },
+    { name: "Police Station 1 - Tarlac", lat: 15.4760, lng: 120.5875, type: "police" },
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-  }).addTo(map);
+    // Hospitals
+    { name: "Tarlac Provincial Hospital", lat: 15.4891, lng: 120.5963, type: "hospital" },
+    { name: "Ramos General Hospital", lat: 15.4755, lng: 120.5901, type: "hospital" },
+    { name: "La Paz Community Hospital", lat: 15.4820, lng: 120.5830, type: "hospital" },
+    { name: "Sacred Heart Hospital Tarlac", lat: 15.4698, lng: 120.5988, type: "hospital" },
 
-  mapReady = true;
+    // Fire Stations
+    { name: "Tarlac City Fire Station", lat: 15.4865, lng: 120.5910, type: "fire" },
+    { name: "BFP Tarlac Provincial Office", lat: 15.4780, lng: 120.5855, type: "fire" },
+  ];
+
+  const colors = {
+    police: "#1E88E5",
+    hospital: "#43A047",
+    fire: "#FB8C00"
+  };
+
+  const labels = {
+    police: "🚔",
+    hospital: "🏥",
+    fire: "🚒"
+  };
+
+  function makeIcon(type) {
+    return L.divIcon({
+      html: `<div style="
+        width: 28px; height: 28px; border-radius: 50%;
+        background: ${colors[type]};
+        border: 3px solid white;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      ">${labels[type]}</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      className: ''
+    });
+  }
+
+  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([15.4755, 120.5960], 15);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+  // Add all facility markers
+  facilities.forEach(f => {
+    L.marker([f.lat, f.lng], { icon: makeIcon(f.type) })
+      .addTo(map)
+      .bindPopup(`<b>${f.name}</b><br><small>${f.type.charAt(0).toUpperCase() + f.type.slice(1)}</small>`);
+  });
+
   startTracking();
 
   function startTracking() {
@@ -187,11 +237,11 @@
 
     const latlng = [lat, lng];
 
-    const redIcon = L.divIcon({
+    const userIcon = L.divIcon({
       html: `<div style="
-        width:18px;height:18px;border-radius:50%;
-        background:#E53935;border:3px solid white;
-        box-shadow:0 0 0 4px rgba(229,57,53,0.3);
+        width: 18px; height: 18px; border-radius: 50%;
+        background: #E53935; border: 3px solid white;
+        box-shadow: 0 0 0 4px rgba(229,57,53,0.3);
       "></div>`,
       iconSize: [18, 18],
       iconAnchor: [9, 9],
@@ -199,14 +249,11 @@
     });
 
     if (!userMarker) {
-      userMarker = L.marker(latlng, { icon: redIcon }).addTo(map);
+      userMarker = L.marker(latlng, { icon: userIcon }).addTo(map).bindPopup("📍 You are here");
       accuracyCircle = L.circle(latlng, {
         radius: acc,
-        color: '#E53935',
-        fillColor: '#E53935',
-        fillOpacity: 0.08,
-        weight: 1,
-        opacity: 0.3
+        color: '#E53935', fillColor: '#E53935',
+        fillOpacity: 0.08, weight: 1, opacity: 0.3
       }).addTo(map);
       map.setView(latlng, 16);
     } else {
@@ -224,17 +271,6 @@
 
   function recenter() {
     if (currentLat && currentLng) map.setView([currentLat, currentLng], 16);
-  }
-
-  function triggerSOS() {
-    if (currentLat && currentLng) {
-      // replace with actual station coords
-      const stationLat = 15.4833;
-      const stationLng = 120.5980;
-      window.open(`https://www.openstreetmap.org/directions?from=${currentLat},${currentLng}&to=${stationLat},${stationLng}`, '_blank');
-    } else {
-      alert('Still getting your location, please wait...');
-    }
   }
 </script>
 </body>
