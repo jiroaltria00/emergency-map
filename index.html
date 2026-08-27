@@ -59,7 +59,7 @@
 
     /* ── RECENTER (chunky 3D) ── */
     .recenter-btn {
-      position:fixed; bottom:160px; right:16px;
+      position:fixed; bottom:90px; right:16px;
       background:linear-gradient(180deg,#3a3a3a 0%,#222 100%);
       border:none; border-radius:14px;
       width:46px; height:46px; font-size:20px;
@@ -72,7 +72,7 @@
 
     /* ── OPEN PANEL FAB (chunky 3D) ── */
     .fab-btn {
-      position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+      position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
       background:linear-gradient(180deg,#3a3a3a 0%,#222 100%);
       color:#fff; border:none; border-radius:18px;
       padding:14px 28px; font-size:13px; font-weight:700;
@@ -85,23 +85,7 @@
     .fab-btn:active { transform:translateX(-50%) translateY(5px); box-shadow:0 1px 0px #111; }
     .fab-btn.hidden { opacity:0; pointer-events:none; transform:translateX(-50%) translateY(20px); }
 
-    /* ── SOS BUTTON ── */
-    .sos-btn {
-      position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
-      background:linear-gradient(180deg, #ff5555 0%, #e02020 100%);
-      color:#fff; border:none; border-radius:20px;
-      width:calc(100% - 40px); max-width:420px;
-      padding:16px 0; font-size:20px; font-weight:900;
-      letter-spacing:0.12em; cursor:pointer;
-      box-shadow:0 6px 0px #a01010, 0 10px 28px rgba(224,32,32,0.45);
-      z-index:100; font-family:'Inter',sans-serif;
-      transition:all 0.12s ease;
-    }
-    .sos-btn:hover { background:linear-gradient(180deg,#ff6666 0%,#e83030 100%); }
-    .sos-btn:active {
-      transform:translateX(-50%) translateY(4px);
-      box-shadow:0 2px 0px #a01010, 0 6px 18px rgba(224,32,32,0.4);
-    }
+
 
     /* ── SLIDE PANEL (dark) ── */
     .agencies-panel {
@@ -267,8 +251,7 @@
   <!-- OPEN PANEL -->
   <button class="fab-btn" id="fabBtn" onclick="openPanel()">🏛️ Gov't Agencies near Me ▲</button>
 
-  <!-- SOS -->
-  <button class="sos-btn" onclick="triggerSOS()">SOS</button>
+
 
   <!-- PANEL -->
   <div class="agencies-panel" id="agenciesPanel">
@@ -549,18 +532,7 @@
       });
     }
 
-    // ── SOS ──
-    function triggerSOS() {
-      if (savedContacts.length) {
-        if (confirm(`🚨 Send SOS to ${savedContacts[0]}?`)) {
-          window.location.href = `tel:${savedContacts[0].replace(/[^0-9+]/g,'')}`;
-        }
-      } else {
-        if (confirm('🚨 Call emergency hotline 911?')) {
-          window.location.href = 'tel:911';
-        }
-      }
-    }
+
   </script>
 </body>
 </html>
