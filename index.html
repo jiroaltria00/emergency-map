@@ -18,6 +18,29 @@
       z-index: 1;
     }
 
+    /* ── BACK BUTTON ── */
+    .back-btn {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      z-index: 100;
+      transition: background 0.15s, transform 0.15s;
+      color: #222;
+    }
+    .back-btn:hover { background: #f0f0f0; transform: scale(1.08); }
+    .back-btn:active { transform: scale(0.95); }
+
     /* ── LIVE BADGE ── */
     .live-badge {
       position: fixed;
@@ -305,6 +328,9 @@
 
   <!-- REAL MAP -->
   <div id="map"></div>
+
+  <!-- BACK BUTTON -->
+  <button class="back-btn" onclick="history.back()" title="Go back">‹</button>
 
   <!-- LIVE BADGE -->
   <div class="live-badge">
