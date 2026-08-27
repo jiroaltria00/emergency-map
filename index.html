@@ -5,332 +5,241 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gov't Agencies Near Me</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Inter',sans-serif; background:#f5f5f5; overflow:hidden; height:100vh; }
+    body { font-family:'Inter',sans-serif; background:#111; overflow:hidden; height:100vh; }
 
-    /* ── REAL MAP ── */
-    #map {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
-    }
+    #map { position:fixed; inset:0; z-index:1; }
 
-    /* ── BACK BUTTON ── */
+    /* ── BACK BUTTON (chunky 3D) ── */
     .back-btn {
-      position: fixed;
-      top: 14px;
-      left: 14px;
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 50%;
-      width: 40px; height: 40px;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-      z-index: 100;
-      transition: background 0.15s, transform 0.15s;
-      color: #222;
+      position:fixed; top:14px; left:14px;
+      background:linear-gradient(180deg,#3a3a3a 0%,#222 100%);
+      border:none; border-radius:14px;
+      width:42px; height:42px; font-size:22px; font-weight:800;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      box-shadow:0 5px 0px #111, 0 8px 16px rgba(0,0,0,0.5);
+      z-index:100; color:#fff; transition:all 0.12s ease;
     }
-    .back-btn:hover { background: #f0f0f0; transform: scale(1.08); }
-    .back-btn:active { transform: scale(0.95); }
+    .back-btn:hover { background:linear-gradient(180deg,#444 0%,#2a2a2a 100%); }
+    .back-btn:active { transform:translateY(4px); box-shadow:0 1px 0px #111; }
 
-    /* ── LIVE BADGE ── */
+    /* ── LIVE BADGE (dark) ── */
     .live-badge {
-      position: fixed;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 999px;
-      padding: 7px 18px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #222;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      z-index: 100;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-      white-space: nowrap;
+      position:fixed; top:14px; left:50%; transform:translateX(-50%);
+      background:rgba(20,20,20,0.92); backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.1); border-radius:999px;
+      padding:7px 18px; font-size:12px; font-weight:600; color:#fff;
+      display:flex; align-items:center; gap:8px;
+      z-index:100; box-shadow:0 2px 14px rgba(0,0,0,0.35); white-space:nowrap;
     }
-
     .live-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #e03030;
-      animation: pulse 1.5s infinite;
-      flex-shrink: 0;
+      width:8px; height:8px; border-radius:50%; background:#ff4444;
+      animation:pulse 1.5s infinite; flex-shrink:0;
     }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(1.4);} }
 
-    @keyframes pulse {
-      0%,100% { opacity:1; transform:scale(1); }
-      50% { opacity:0.4; transform:scale(1.4); }
-    }
-
-    /* ── COORDS CARD (top-right) ── */
+    /* ── COORDS CARD (dark) ── */
     .coords-card {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 14px;
-      padding: 12px 16px;
-      z-index: 100;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-      min-width: 148px;
+      position:fixed; top:14px; right:14px;
+      background:rgba(20,20,20,0.92); backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.1); border-radius:14px;
+      padding:12px 16px; z-index:100;
+      box-shadow:0 4px 18px rgba(0,0,0,0.4); min-width:148px;
     }
+    .coords-label { color:#666; font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; }
+    .coords-value { color:#fff; font-weight:700; font-size:13px; margin-bottom:5px; }
+    .accuracy-row { display:flex; align-items:center; gap:5px; }
+    .acc-dot { width:8px; height:8px; border-radius:50%; background:#22c55e; flex-shrink:0; transition:background 0.3s; }
+    .last-updated { font-size:9px; color:#555; margin-top:6px; font-weight:500; }
 
-    .coords-label {
-      color: #999;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
+    @keyframes flash { 0%{opacity:1;} 40%{opacity:0.2;} 100%{opacity:1;} }
+    .flashing { animation:flash 0.4s ease; }
+
+    /* ── RECENTER (chunky 3D) ── */
+    .recenter-btn {
+      position:fixed; bottom:160px; right:16px;
+      background:linear-gradient(180deg,#3a3a3a 0%,#222 100%);
+      border:none; border-radius:14px;
+      width:46px; height:46px; font-size:20px;
+      cursor:pointer; box-shadow:0 5px 0px #111, 0 8px 16px rgba(0,0,0,0.4);
+      z-index:100; display:flex; align-items:center; justify-content:center;
+      transition:all 0.12s ease; color:#fff;
     }
+    .recenter-btn:hover { background:linear-gradient(180deg,#444 0%,#2a2a2a 100%); }
+    .recenter-btn:active { transform:translateY(4px); box-shadow:0 1px 0px #111; }
 
-    .coords-value {
-      color: #111;
-      font-weight: 700;
-      font-size: 13px;
-      margin-bottom: 5px;
-    }
-
-    .accuracy-row {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .acc-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #22c55e;
-      flex-shrink: 0;
-      transition: background 0.3s;
-    }
-
-    .last-updated {
-      font-size: 9px;
-      color: #bbb;
-      margin-top: 6px;
-      font-weight: 500;
-    }
-
-    @keyframes flash {
-      0% { opacity:1; } 40% { opacity:0.3; } 100% { opacity:1; }
-    }
-    .flashing { animation: flash 0.4s ease; }
-
-    /* ── BOTTOM BUTTON ── */
+    /* ── OPEN PANEL FAB (chunky 3D) ── */
     .fab-btn {
-      position: fixed;
-      bottom: 22px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #7b1c1c;
-      color: white;
-      border: none;
-      border-radius: 999px;
-      padding: 13px 28px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 6px 24px rgba(123,28,28,0.35);
-      z-index: 100;
-      transition: all 0.25s ease;
-      white-space: nowrap;
-      font-family: 'Inter', sans-serif;
+      position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+      background:linear-gradient(180deg,#3a3a3a 0%,#222 100%);
+      color:#fff; border:none; border-radius:18px;
+      padding:14px 28px; font-size:13px; font-weight:700;
+      cursor:pointer; display:flex; align-items:center; gap:8px;
+      box-shadow:0 6px 0px #111, 0 10px 24px rgba(0,0,0,0.5);
+      z-index:100; transition:all 0.12s ease;
+      white-space:nowrap; font-family:'Inter',sans-serif;
     }
-
-    .fab-btn:hover { background:#5a1010; box-shadow:0 8px 28px rgba(123,28,28,0.45); }
+    .fab-btn:hover { background:linear-gradient(180deg,#444 0%,#2a2a2a 100%); }
+    .fab-btn:active { transform:translateX(-50%) translateY(5px); box-shadow:0 1px 0px #111; }
     .fab-btn.hidden { opacity:0; pointer-events:none; transform:translateX(-50%) translateY(20px); }
 
-    /* recenter button */
-    .recenter-btn {
-      position: fixed;
-      bottom: 90px;
-      right: 16px;
-      background: white;
-      border: none;
-      border-radius: 50%;
-      width: 44px; height: 44px;
-      font-size: 20px;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s;
+    /* ── SOS BUTTON ── */
+    .sos-btn {
+      position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+      background:linear-gradient(180deg, #ff5555 0%, #e02020 100%);
+      color:#fff; border:none; border-radius:20px;
+      width:calc(100% - 40px); max-width:420px;
+      padding:16px 0; font-size:20px; font-weight:900;
+      letter-spacing:0.12em; cursor:pointer;
+      box-shadow:0 6px 0px #a01010, 0 10px 28px rgba(224,32,32,0.45);
+      z-index:100; font-family:'Inter',sans-serif;
+      transition:all 0.12s ease;
     }
-    .recenter-btn:hover { background: #f5f5f5; }
+    .sos-btn:hover { background:linear-gradient(180deg,#ff6666 0%,#e83030 100%); }
+    .sos-btn:active {
+      transform:translateX(-50%) translateY(4px);
+      box-shadow:0 2px 0px #a01010, 0 6px 18px rgba(224,32,32,0.4);
+    }
 
-    /* ── SLIDE PANEL ── */
+    /* ── SLIDE PANEL (dark) ── */
     .agencies-panel {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      background: #fff;
-      border-radius: 24px 24px 0 0;
-      box-shadow: 0 -8px 32px rgba(0,0,0,0.14);
-      z-index: 200;
-      transform: translateY(100%);
-      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
-      max-height: 78vh;
-      overflow-y: auto;
-      scrollbar-width: none;
+      position:fixed; bottom:0; left:0; right:0;
+      background:#1a1a1a;
+      border-radius:24px 24px 0 0;
+      box-shadow:0 -8px 40px rgba(0,0,0,0.6);
+      z-index:200;
+      transform:translateY(100%);
+      transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);
+      max-height:80vh; overflow-y:auto; scrollbar-width:none;
     }
     .agencies-panel::-webkit-scrollbar { display:none; }
-    .agencies-panel.open { transform: translateY(0); }
+    .agencies-panel.open { transform:translateY(0); }
 
     .panel-handle {
-      display: flex;
-      justify-content: center;
-      padding: 12px 0 0;
-      position: sticky;
-      top: 0;
-      background: #fff;
-      z-index: 2;
+      display:flex; justify-content:center; padding:12px 0 0;
+      position:sticky; top:0; background:#1a1a1a; z-index:2;
     }
-    .handle-bar { width:40px; height:5px; background:#ddd; border-radius:999px; }
+    .handle-bar { width:40px; height:5px; background:#333; border-radius:999px; }
 
-    .panel-inner { padding: 14px 18px 36px; }
+    .panel-inner { padding:14px 18px 36px; }
 
     .panel-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 18px;
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:18px;
     }
-
-    .section-title { font-size:15px; font-weight:700; color:#111; }
+    .section-title { font-size:15px; font-weight:700; color:#fff; }
 
     .close-btn {
-      background: #f3f3f3;
-      border: none;
-      border-radius: 50%;
-      width: 30px; height: 30px;
-      font-size: 15px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #555;
-      transition: background 0.15s;
+      background:linear-gradient(180deg,#3a3a3a 0%,#222 100%);
+      border:none; border-radius:10px;
+      width:32px; height:32px; font-size:14px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      color:#aaa; box-shadow:0 3px 0px #111;
+      transition:all 0.12s ease;
     }
-    .close-btn:hover { background:#ffe0e0; color:#7b1c1c; }
+    .close-btn:hover { background:linear-gradient(180deg,#4a2020 0%,#2a1010 100%); color:#ff6666; }
+    .close-btn:active { transform:translateY(2px); box-shadow:0 1px 0px #111; }
 
-    /* agencies row */
-    .agencies-scroll {
-      display: flex;
-      gap: 16px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      scrollbar-width: none;
+    /* ── CONTACT NUMBER INPUT ROW ── */
+    .contact-input-section { margin-bottom:16px; }
+    .contact-input-label { font-size:11px; color:#666; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:8px; }
+
+    .contact-input-row {
+      display:flex; gap:8px; align-items:center;
     }
-    .agencies-scroll::-webkit-scrollbar { display:none; }
 
-    .agency-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      flex-shrink: 0;
-      width: 72px;
-      transition: transform 0.15s;
+    .contact-input {
+      flex:1; background:#2a2a2a; border:1px solid #333;
+      border-radius:16px; padding:12px 16px;
+      font-size:14px; color:#fff; font-family:'Inter',sans-serif;
+      outline:none; transition:border 0.15s;
     }
-    .agency-card:hover { transform: translateY(-3px); }
+    .contact-input::placeholder { color:#555; }
+    .contact-input:focus { border-color:#555; }
 
-    .agency-circle {
-      width: 62px; height: 62px;
-      border-radius: 50%;
-      background: #f5f5f5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      transition: outline 0.15s;
-      flex-shrink: 0;
+    .add-btn {
+      background:linear-gradient(180deg,#55dd55 0%,#22aa22 100%);
+      border:none; border-radius:14px;
+      width:46px; height:46px; font-size:22px; font-weight:700;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      box-shadow:0 4px 0px #117711, 0 6px 16px rgba(34,170,34,0.35);
+      color:#fff; flex-shrink:0; transition:all 0.12s;
     }
-    .agency-circle img { width:100%; height:100%; object-fit:contain; padding:6px; }
-    .agency-icon-fallback { font-size:26px; }
-    .agency-name { font-size:10px; font-weight:600; text-align:center; color:#333; line-height:1.3; }
+    .add-btn:active { transform:translateY(3px); box-shadow:0 1px 0px #117711; }
 
-    .agency-card.active .agency-circle { outline: 3px solid #7b1c1c; outline-offset:2px; }
-    .agency-card.active .agency-name { color:#7b1c1c; }
-
-    .divider { height:1px; background:#eee; margin:20px 0; }
-
-    .contact-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
+    .del-btn {
+      background:linear-gradient(180deg,#ffcc33 0%,#ddaa00 100%);
+      border:none; border-radius:14px;
+      width:46px; height:46px; font-size:20px;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      box-shadow:0 4px 0px #997700, 0 6px 16px rgba(221,170,0,0.35);
+      color:#fff; flex-shrink:0; transition:all 0.12s;
     }
-    .contact-header-title { font-size:13px; font-weight:700; color:#333; }
-    .see-all { font-size:12px; color:#7b1c1c; font-weight:600; cursor:pointer; }
+    .del-btn:active { transform:translateY(3px); box-shadow:0 1px 0px #997700; }
 
-    .contact-list { display:flex; flex-direction:column; gap:12px; }
+    /* saved contacts */
+    .saved-contacts { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+    .saved-contact-row {
+      display:flex; align-items:center; gap:10px;
+      background:#242424; border-radius:14px; padding:10px 14px;
+    }
+    .saved-contact-num { flex:1; font-size:13px; color:#ddd; font-weight:500; }
+    .saved-call-btn {
+      background:linear-gradient(180deg,#c02020 0%,#8a1010 100%);
+      color:#fff; border:none; border-radius:12px;
+      padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;
+      font-family:'Inter',sans-serif;
+      box-shadow:0 4px 0px #4a0808;
+      transition:all 0.12s ease;
+    }
+    .saved-call-btn:hover { background:linear-gradient(180deg,#d03030 0%,#9a2020 100%); }
+    .saved-call-btn:active { transform:translateY(3px); box-shadow:0 1px 0px #4a0808; }
+
+    .divider { height:1px; background:#2a2a2a; margin:18px 0; }
+
+    .contact-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .contact-header-title { font-size:13px; font-weight:700; color:#aaa; }
+    .see-all { font-size:12px; color:#ff5555; font-weight:600; cursor:pointer; }
+
+    .contact-list { display:flex; flex-direction:column; gap:10px; }
 
     .contact-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 14px;
-      background: #f7f7f7;
-      border-radius: 14px;
-      transition: background 0.15s;
+      display:flex; align-items:center; gap:12px;
+      padding:12px 14px; background:#242424; border-radius:14px;
+      cursor:pointer; transition:background 0.15s;
     }
-    .contact-row:hover { background:#fff0f0; }
+    .contact-row:hover { background:#2e2e2e; }
 
     .contact-icon {
-      width:42px; height:42px;
-      border-radius:50%;
+      width:42px; height:42px; border-radius:50%;
       display:flex; align-items:center; justify-content:center;
       font-size:18px; flex-shrink:0;
     }
     .contact-info { flex:1; }
-    .contact-agency { font-size:13px; font-weight:600; color:#111; }
+    .contact-agency { font-size:13px; font-weight:600; color:#eee; }
     .contact-number { font-size:12px; color:#666; margin-top:2px; }
 
     .call-btn {
-      background: #7b1c1c;
-      color: white;
-      border: none;
-      border-radius: 999px;
-      padding: 7px 16px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      font-family: 'Inter', sans-serif;
-      transition: background 0.15s;
+      background:linear-gradient(180deg,#c02020 0%,#8a1010 100%);
+      color:#fff; border:none; border-radius:12px;
+      padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer;
+      white-space:nowrap; font-family:'Inter',sans-serif;
+      box-shadow:0 4px 0px #4a0808, 0 6px 14px rgba(180,20,20,0.3);
+      transition:all 0.12s ease;
     }
-    .call-btn:hover { background:#5a1010; }
+    .call-btn:hover { background:linear-gradient(180deg,#d03030 0%,#9a2020 100%); }
+    .call-btn:active { transform:translateY(3px); box-shadow:0 1px 0px #4a0808; }
+    .call-btn.no-num { background:linear-gradient(180deg,#333 0%,#222 100%); color:#555; cursor:default; box-shadow:0 4px 0px #111; }
   </style>
 </head>
 <body>
 
-  <!-- REAL MAP -->
   <div id="map"></div>
 
-  <!-- BACK BUTTON -->
-  <button class="back-btn" onclick="history.back()" title="Go back">‹</button>
+  <!-- BACK -->
+  <button class="back-btn" onclick="history.back()">‹</button>
 
   <!-- LIVE BADGE -->
   <div class="live-badge">
@@ -338,7 +247,7 @@
     Live location active
   </div>
 
-  <!-- COORDS CARD -->
+  <!-- COORDS -->
   <div class="coords-card">
     <div class="coords-label">Latitude</div>
     <div class="coords-value" id="latVal">Locating...</div>
@@ -353,14 +262,15 @@
   </div>
 
   <!-- RECENTER -->
-  <button class="recenter-btn" onclick="recenter()" title="Re-center on me">📍</button>
+  <button class="recenter-btn" onclick="recenter()">📍</button>
 
-  <!-- OPEN PANEL BUTTON -->
-  <button class="fab-btn" id="fabBtn" onclick="openPanel()">
-    🏛️ Gov't Agencies near Me ▲
-  </button>
+  <!-- OPEN PANEL -->
+  <button class="fab-btn" id="fabBtn" onclick="openPanel()">🏛️ Gov't Agencies near Me ▲</button>
 
-  <!-- SLIDE PANEL -->
+  <!-- SOS -->
+  <button class="sos-btn" onclick="triggerSOS()">SOS</button>
+
+  <!-- PANEL -->
   <div class="agencies-panel" id="agenciesPanel">
     <div class="panel-handle"><div class="handle-bar"></div></div>
     <div class="panel-inner">
@@ -370,288 +280,287 @@
         <button class="close-btn" onclick="closePanel()">✕</button>
       </div>
 
-      <div class="agencies-scroll">
-        <div class="agency-card" onclick="selectAgency(this,'pnp')">
-          <div class="agency-circle">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/PNP_Seal.svg/240px-PNP_Seal.svg.png"
-                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="PNP"/>
-            <div class="agency-icon-fallback" style="display:none">🚔</div>
-          </div>
-          <div class="agency-name">PNP</div>
+      <!-- Contact number input -->
+      <div class="contact-input-section">
+        <div class="contact-input-label">Emergency Contact Number</div>
+        <div class="contact-input-row">
+          <input class="contact-input" id="contactInput" type="tel" placeholder="Contact Number" />
+          <button class="add-btn" onclick="addContact()" title="Add">+</button>
+          <button class="del-btn" onclick="deleteLastContact()" title="Delete">🗑</button>
         </div>
-
-        <div class="agency-card" onclick="selectAgency(this,'bfp')">
-          <div class="agency-circle">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Bureau_of_Fire_Protection_%28Philippines%29.svg/240px-Bureau_of_Fire_Protection_%28Philippines%29.svg.png"
-                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="BFP"/>
-            <div class="agency-icon-fallback" style="display:none">🚒</div>
-          </div>
-          <div class="agency-name">Fire Station</div>
-        </div>
-
-        <div class="agency-card" onclick="selectAgency(this,'tph')">
-          <div class="agency-circle" style="background:#eef4ff">
-            <div class="agency-icon-fallback">🏥</div>
-          </div>
-          <div class="agency-name">Tarlac Provincial Hospital</div>
-        </div>
-
-        <div class="agency-card" onclick="selectAgency(this,'cldh')">
-          <div class="agency-circle" style="background:#eef4ff">
-            <div class="agency-icon-fallback">🏨</div>
-          </div>
-          <div class="agency-name">CLDH</div>
-        </div>
-
-        <div class="agency-card" onclick="selectAgency(this,'brgy')">
-          <div class="agency-circle" style="background:#f0eeff">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Barangay_flag_of_the_Philippines.svg/240px-Barangay_flag_of_the_Philippines.svg.png"
-                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="Barangay"/>
-            <div class="agency-icon-fallback" style="display:none">🏛️</div>
-          </div>
-          <div class="agency-name">Barangay Hall</div>
-        </div>
-
-        <div class="agency-card" onclick="selectAgency(this,'ndrrmc')">
-          <div class="agency-circle" style="background:#fff4ee">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/NDRRMC_logo.svg/240px-NDRRMC_logo.svg.png"
-                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="NDRRMC"/>
-            <div class="agency-icon-fallback" style="display:none">🛡️</div>
-          </div>
-          <div class="agency-name">NDRRMC</div>
-        </div>
+        <div class="saved-contacts" id="savedContacts"></div>
       </div>
 
       <div class="divider"></div>
 
       <div class="contact-header">
-        <div class="contact-header-title" id="contactTitle">All Contact Numbers</div>
-        <div class="see-all" onclick="showAll()">See all</div>
+        <div class="contact-header-title" id="contactTitle">Nearby Agencies</div>
+        <div class="see-all" onclick="renderNearbyPanel()">See all</div>
       </div>
-      <div class="contact-list" id="contactList"></div>
+      <div class="contact-list" id="contactList">
+        <div style="text-align:center;color:#555;padding:24px;font-size:13px;">Getting your location...<br>Agencies will appear shortly 🗺️</div>
+      </div>
+
     </div>
   </div>
 
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ── AGENCIES DATA ──
-    const agencies = {
-      pnp:    { name:"PNP (Police)",               numbers:["117","(045) 982-0795"],            icon:"🚔", color:"#dbeafe",
-                lat:15.4762, lng:120.5964 },
-      bfp:    { name:"BFP Fire Station",           numbers:["160","(045) 982-1234"],             icon:"🚒", color:"#fee2e2",
-                lat:15.4748, lng:120.6048 },
-      tph:    { name:"Tarlac Provincial Hospital", numbers:["(045) 982-0411","(045) 982-0412"],  icon:"🏥", color:"#dcfce7",
-                lat:15.4780, lng:120.6000 },
-      cldh:   { name:"CLDH",                       numbers:["(045) 491-0100"],                   icon:"🏨", color:"#e0f2fe",
-                lat:15.4720, lng:120.6020 },
-      brgy:   { name:"Barangay Hall",              numbers:["(045) 000-0000"],                   icon:"🏛️", color:"#ede9fe",
-                lat:15.4735, lng:120.6010 },
-      ndrrmc: { name:"NDRRMC",                     numbers:["911","8911-1406"],                  icon:"🛡️", color:"#ffedd5",
-                lat:15.4755, lng:120.5980 }
+    // ── CATEGORY CONFIG ──
+    const categoryConfig = {
+      police:     { icon:'🚔', color:'#1e3a5f', label:'Police' },
+      fire:       { icon:'🚒', color:'#5f1e1e', label:'Fire Station' },
+      hospital:   { icon:'🏥', color:'#1e4a2a', label:'Hospital' },
+      clinic:     { icon:'🏨', color:'#1e3a4a', label:'Clinic' },
+      government: { icon:'🏛️', color:'#2e2a4a', label:'Gov\'t Office' },
+      barangay:   { icon:'🏘️', color:'#3a3a1e', label:'Barangay Hall' },
+      disaster:   { icon:'🛡️', color:'#3a2a1e', label:'DRRM / Rescue' },
+      other:      { icon:'📍', color:'#2a2a2a', label:'Agency' },
     };
 
-    // ── INIT MAP (Leaflet + OpenStreetMap) ──
-    const map = L.map('map', {
-      zoomControl: false,
-      attributionControl: true
-    }).setView([15.4738, 120.6053], 15);
+    // ── MAP ──
+    const map = L.map('map', { zoomControl:false, attributionControl:true })
+      .setView([15.4738, 120.6053], 15);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19
+      attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom:19
     }).addTo(map);
 
-    // Zoom control — bottom right
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.control.zoom({ position:'bottomright' }).addTo(map);
 
     // ── YOU MARKER ──
     const youIcon = L.divIcon({
-      className: '',
-      html: `<div style="
-        width:18px;height:18px;
-        background:#e03030;
-        border-radius:50%;
-        border:3px solid white;
-        box-shadow:0 2px 8px rgba(224,48,48,0.6);
-        position:relative;
-      ">
-        <div style="
-          position:absolute;
-          top:50%;left:50%;
-          transform:translate(-50%,-50%);
-          width:44px;height:44px;
-          border-radius:50%;
-          background:rgba(224,48,48,0.18);
-          animation:pulse 1.5s infinite;
-        "></div>
+      className:'',
+      html:`<div style="width:18px;height:18px;background:#ff3333;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(255,50,50,0.7);position:relative;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,50,50,0.15);"></div>
       </div>`,
-      iconSize: [18,18],
-      iconAnchor: [9,9]
+      iconSize:[18,18], iconAnchor:[9,9]
     });
 
-    let youMarker = null;
-    let accuracyCircle = null;
+    let youMarker = null, accuracyCircle = null;
+    let overpassMarkers = [], nearbyAgencies = [], fetchedForLocation = false;
 
-    // ── AGENCY MARKERS ──
-    Object.entries(agencies).forEach(([key, a]) => {
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="
-          width:36px;height:36px;
-          background:white;
-          border-radius:50%;
-          display:flex;align-items:center;justify-content:center;
-          font-size:18px;
-          box-shadow:0 2px 10px rgba(0,0,0,0.2);
-          border:2px solid #eee;
-        ">${a.icon}</div>`,
-        iconSize: [36,36],
-        iconAnchor: [18,18],
-        popupAnchor: [0,-18]
+    // ── CLASSIFIER ──
+    function classify(tags) {
+      const name = (tags.name||'').toLowerCase();
+      const amenity = tags.amenity||'';
+      const govt = tags.government||'';
+      const office = tags.office||'';
+      if (amenity==='police'||name.includes('pnp')||name.includes('police')) return 'police';
+      if (amenity==='fire_station'||name.includes('fire')||name.includes('bfp')) return 'fire';
+      if (amenity==='hospital'||name.includes('hospital')) return 'hospital';
+      if (amenity==='clinic'||amenity==='health'||name.includes('clinic')||name.includes('health center')) return 'clinic';
+      if (name.includes('barangay')||name.includes('brgy')||govt==='local_authority') return 'barangay';
+      if (name.includes('drrm')||name.includes('disaster')||name.includes('rescue')||name.includes('ndrrmc')) return 'disaster';
+      if (office==='government'||govt||amenity==='townhall'||name.includes('municipal')||name.includes('city hall')||name.includes('capitol')) return 'government';
+      return 'other';
+    }
+
+    // ── OVERPASS ──
+    async function fetchNearbyAgencies(lat, lng) {
+      const radius = 5000;
+      const query = `[out:json][timeout:25];(
+        node["amenity"="police"](around:${radius},${lat},${lng});
+        node["amenity"="fire_station"](around:${radius},${lat},${lng});
+        node["amenity"="hospital"](around:${radius},${lat},${lng});
+        node["amenity"="clinic"](around:${radius},${lat},${lng});
+        node["amenity"="townhall"](around:${radius},${lat},${lng});
+        node["office"="government"](around:${radius},${lat},${lng});
+        node["government"](around:${radius},${lat},${lng});
+        node["name"~"barangay|BARANGAY|Barangay|brgy|PNP|BFP|NDRRMC|fire|hospital|Municipal|Capitol|DRRM",i](around:${radius},${lat},${lng});
+        way["amenity"="police"](around:${radius},${lat},${lng});
+        way["amenity"="fire_station"](around:${radius},${lat},${lng});
+        way["amenity"="hospital"](around:${radius},${lat},${lng});
+        way["amenity"="townhall"](around:${radius},${lat},${lng});
+        way["office"="government"](around:${radius},${lat},${lng});
+      );out center;`;
+
+      try {
+        document.getElementById('lastUpdated').textContent = 'Searching agencies...';
+        const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body:query });
+        const data = await res.json();
+
+        overpassMarkers.forEach(m => map.removeLayer(m));
+        overpassMarkers = []; nearbyAgencies = [];
+
+        data.elements.forEach(el => {
+          const name = el.tags?.name;
+          if (!name) return;
+          const elLat = el.lat ?? el.center?.lat;
+          const elLng = el.lon ?? el.center?.lon;
+          if (!elLat || !elLng) return;
+
+          const cat = classify(el.tags);
+          const cfg = categoryConfig[cat];
+          const phone = el.tags?.phone || el.tags?.['contact:phone'] || '—';
+
+          nearbyAgencies.push({ name, lat:elLat, lng:elLng, cat, cfg, phone });
+
+          const icon = L.divIcon({
+            className:'',
+            html:`<div style="width:36px;height:36px;background:#1a1a1a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 12px rgba(0,0,0,0.5);border:2px solid #333;">${cfg.icon}</div>`,
+            iconSize:[36,36], iconAnchor:[18,18], popupAnchor:[0,-20]
+          });
+
+          const marker = L.marker([elLat,elLng],{icon}).addTo(map).bindPopup(`
+            <div style="font-family:Inter,sans-serif;min-width:150px;background:#1e1e1e;color:#fff;border-radius:10px;padding:4px;">
+              <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${cfg.icon} ${name}</div>
+              <div style="font-size:11px;color:#888;margin-bottom:4px;">${cfg.label}</div>
+              ${phone!=='—'?`<div style="font-size:12px;color:#aaa;">📞 ${phone}</div>`:''}
+            </div>`);
+          overpassMarkers.push(marker);
+        });
+
+        renderNearbyPanel();
+        document.getElementById('lastUpdated').textContent = `Found ${nearbyAgencies.length} agencies nearby`;
+      } catch(e) {
+        document.getElementById('lastUpdated').textContent = 'Could not load agencies';
+      }
+    }
+
+    // ── RENDER PANEL ──
+    function renderNearbyPanel() {
+      const list = document.getElementById('contactList');
+      list.innerHTML = '';
+      document.getElementById('contactTitle').textContent = `Nearby Agencies (${nearbyAgencies.length})`;
+
+      if (!nearbyAgencies.length) {
+        list.innerHTML = `<div style="text-align:center;color:#555;padding:24px;font-size:13px;">No agencies found nearby.</div>`;
+        return;
+      }
+
+      nearbyAgencies.forEach((a,i) => {
+        list.innerHTML += `
+          <div class="contact-row" onclick="flyToAgency(${i})">
+            <div class="contact-icon" style="background:${a.cfg.color}">${a.cfg.icon}</div>
+            <div class="contact-info">
+              <div class="contact-agency">${a.name}</div>
+              <div class="contact-number">${a.cfg.label}${a.phone!=='—'?' · '+a.phone:''}</div>
+            </div>
+            ${a.phone!=='—'
+              ? `<button class="call-btn" onclick="event.stopPropagation();window.location.href='tel:${a.phone.replace(/[^0-9+]/g,'')}'">Call</button>`
+              : `<button class="call-btn no-num">📍</button>`}
+          </div>`;
       });
+    }
 
-      L.marker([a.lat, a.lng], { icon })
-        .addTo(map)
-        .bindPopup(`
-          <div style="font-family:Inter,sans-serif;min-width:140px;">
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${a.icon} ${a.name}</div>
-            ${a.numbers.map(n => `<div style="font-size:12px;color:#555;">📞 ${n}</div>`).join('')}
-          </div>
-        `);
-    });
+    function flyToAgency(i) {
+      const a = nearbyAgencies[i];
+      map.flyTo([a.lat,a.lng],18,{duration:1});
+      closePanel();
+    }
 
-    // ── LIVE GPS ──
+    // ── GPS ──
     function flash(id) {
-      const el = document.getElementById(id);
-      el.classList.remove('flashing');
-      void el.offsetWidth;
-      el.classList.add('flashing');
-      setTimeout(() => el.classList.remove('flashing'), 400);
+      const el = document.getElementById(id); if(!el) return;
+      el.classList.remove('flashing'); void el.offsetWidth; el.classList.add('flashing');
+      setTimeout(()=>el.classList.remove('flashing'),400);
     }
 
     function updateTime() {
-      const now = new Date();
-      const t = [now.getHours(), now.getMinutes(), now.getSeconds()]
-        .map(n => n.toString().padStart(2,'0')).join(':');
-      document.getElementById('lastUpdated').textContent = `Last updated ${t}`;
+      const t = new Date();
+      const str = [t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>n.toString().padStart(2,'0')).join(':');
+      document.getElementById('lastUpdated').textContent = `Last updated ${str}`;
     }
 
     function onPosition(pos) {
-      const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
-
-      // Update coords card
+      const {latitude:lat, longitude:lng, accuracy:acc} = pos.coords;
       document.getElementById('latVal').textContent = lat.toFixed(6);
       document.getElementById('lngVal').textContent = lng.toFixed(6);
-      document.getElementById('accVal').textContent = Math.round(acc) + 'm';
-      flash('latVal'); flash('lngVal');
-      updateTime();
+      document.getElementById('accVal').textContent = Math.round(acc)+'m';
+      flash('latVal'); flash('lngVal'); updateTime();
+      document.getElementById('accDot').style.background = acc<20?'#22c55e':acc<60?'#f59e0b':'#ef4444';
 
-      // Accuracy dot color
-      const dot = document.getElementById('accDot');
-      dot.style.background = acc < 20 ? '#22c55e' : acc < 60 ? '#f59e0b' : '#ef4444';
-
-      // Move / create you marker
-      const latlng = [lat, lng];
+      const latlng = [lat,lng];
       if (!youMarker) {
-        youMarker = L.marker(latlng, { icon: youIcon, zIndexOffset: 1000 }).addTo(map);
-        map.setView(latlng, 16);
-      } else {
-        youMarker.setLatLng(latlng);
-      }
+        youMarker = L.marker(latlng,{icon:youIcon,zIndexOffset:1000}).addTo(map);
+        map.setView(latlng,15);
+        if (!fetchedForLocation) { fetchNearbyAgencies(lat,lng); fetchedForLocation=true; }
+      } else { youMarker.setLatLng(latlng); }
 
-      // Accuracy circle
       if (accuracyCircle) map.removeLayer(accuracyCircle);
-      accuracyCircle = L.circle(latlng, {
-        radius: acc,
-        color: '#e03030',
-        fillColor: '#e03030',
-        fillOpacity: 0.08,
-        weight: 1.5
-      }).addTo(map);
+      accuracyCircle = L.circle(latlng,{radius:acc,color:'#ff3333',fillColor:'#ff3333',fillOpacity:0.07,weight:1.5}).addTo(map);
     }
 
     function onError() {
       document.getElementById('latVal').textContent = 'Access denied';
       document.getElementById('lngVal').textContent = '—';
-      document.getElementById('lastUpdated').textContent = 'Allow location to track';
+      document.getElementById('lastUpdated').textContent = 'Allow location access';
       document.getElementById('accDot').style.background = '#ef4444';
+      if (!fetchedForLocation) { fetchNearbyAgencies(15.4738,120.6053); fetchedForLocation=true; }
     }
 
     if (navigator.geolocation) {
-      // First immediate fix
-      navigator.geolocation.getCurrentPosition(onPosition, onError, {
-        enableHighAccuracy: true, timeout: 8000, maximumAge: 0
-      });
-      // Then watch continuously
-      navigator.geolocation.watchPosition(onPosition, onError, {
-        enableHighAccuracy: true, timeout: 8000, maximumAge: 3000
-      });
+      navigator.geolocation.getCurrentPosition(onPosition,onError,{enableHighAccuracy:true,timeout:8000,maximumAge:0});
+      navigator.geolocation.watchPosition(onPosition,onError,{enableHighAccuracy:true,timeout:8000,maximumAge:3000});
     } else {
       document.getElementById('latVal').textContent = 'Not supported';
+      fetchNearbyAgencies(15.4738,120.6053);
     }
 
-    // Recenter
-    function recenter() {
-      if (youMarker) map.setView(youMarker.getLatLng(), 16);
-    }
+    function recenter() { if(youMarker) map.setView(youMarker.getLatLng(),16); }
 
     // ── PANEL ──
     function openPanel() {
       document.getElementById('agenciesPanel').classList.add('open');
       document.getElementById('fabBtn').classList.add('hidden');
     }
-
     function closePanel() {
       document.getElementById('agenciesPanel').classList.remove('open');
       document.getElementById('fabBtn').classList.remove('hidden');
     }
 
-    // Swipe down to close
-    let startY = 0;
-    const panel = document.getElementById('agenciesPanel');
-    panel.addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
-    panel.addEventListener('touchend', e => {
-      if (e.changedTouches[0].clientY - startY > 60) closePanel();
+    let startY=0;
+    document.getElementById('agenciesPanel').addEventListener('touchstart',e=>{startY=e.touches[0].clientY;});
+    document.getElementById('agenciesPanel').addEventListener('touchend',e=>{
+      if(e.changedTouches[0].clientY-startY>60) closePanel();
     });
 
     // ── CONTACTS ──
-    function renderContacts(filter) {
-      const list = document.getElementById('contactList');
-      list.innerHTML = '';
-      const keys = filter ? [filter] : Object.keys(agencies);
-      keys.forEach(key => {
-        const a = agencies[key];
-        a.numbers.forEach(num => {
-          list.innerHTML += `
-            <div class="contact-row">
-              <div class="contact-icon" style="background:${a.color}">${a.icon}</div>
-              <div class="contact-info">
-                <div class="contact-agency">${a.name}</div>
-                <div class="contact-number">${num}</div>
-              </div>
-              <button class="call-btn" onclick="window.location.href='tel:${num.replace(/[^0-9+]/g,'')}'">Call</button>
-            </div>`;
-        });
+    let savedContacts = [];
+
+    function addContact() {
+      const input = document.getElementById('contactInput');
+      const val = input.value.trim();
+      if (!val) return;
+      savedContacts.push(val);
+      input.value = '';
+      renderSavedContacts();
+    }
+
+    function deleteLastContact() {
+      if (!savedContacts.length) return;
+      savedContacts.pop();
+      renderSavedContacts();
+    }
+
+    function renderSavedContacts() {
+      const el = document.getElementById('savedContacts');
+      el.innerHTML = '';
+      savedContacts.forEach((num,i) => {
+        el.innerHTML += `
+          <div class="saved-contact-row">
+            <span style="font-size:16px">👤</span>
+            <span class="saved-contact-num">${num}</span>
+            <button class="saved-call-btn" onclick="window.location.href='tel:${num.replace(/[^0-9+]/g,'')}'" >Call</button>
+            <button style="background:none;border:none;color:#555;font-size:16px;cursor:pointer;padding:0 4px;" onclick="savedContacts.splice(${i},1);renderSavedContacts()">✕</button>
+          </div>`;
       });
     }
 
-    function selectAgency(el, key) {
-      document.querySelectorAll('.agency-card').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('contactTitle').textContent = agencies[key].name;
-      renderContacts(key);
-      // Pan to agency on map
-      map.flyTo([agencies[key].lat, agencies[key].lng], 17, { duration: 1 });
+    // ── SOS ──
+    function triggerSOS() {
+      if (savedContacts.length) {
+        if (confirm(`🚨 Send SOS to ${savedContacts[0]}?`)) {
+          window.location.href = `tel:${savedContacts[0].replace(/[^0-9+]/g,'')}`;
+        }
+      } else {
+        if (confirm('🚨 Call emergency hotline 911?')) {
+          window.location.href = 'tel:911';
+        }
+      }
     }
-
-    function showAll() {
-      document.querySelectorAll('.agency-card').forEach(c => c.classList.remove('active'));
-      document.getElementById('contactTitle').textContent = 'All Contact Numbers';
-      renderContacts(null);
-    }
-
-    renderContacts(null);
   </script>
 </body>
 </html>
